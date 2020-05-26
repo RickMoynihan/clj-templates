@@ -4,6 +4,7 @@
             [clj-templates.parse :as parse]
             [clj-templates.expansion :as ex]
             [clojure.walk :as walk])
+  (:refer-clojure :exclude [compile])
   (:import [clojure.lang Named]
            [java.lang Number]))
 
@@ -34,6 +35,19 @@
   (every? (fn [section]
             (contains? #{:expression :literals} (:type section)))
           template))
+
+(defn compile [template]
+  (let [lexbuf (lex/from-string template)
+        t (parse/parse parse/uri-template lexbuf)]
+    (fn [bindings]
+      (let [bindings (format-bindings bindings)
+            cps (ex/expand-template t bindings)
+            result (util/codepoints->string cps)]
+        (if (template-valid? t)
+          result
+          (throw (ex-info "Invalid URI template" {:expansion result})))))))
+
+
 
 (defn expand
   "Expands a URI template string with the a map of bindings"
